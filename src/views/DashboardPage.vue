@@ -26,7 +26,7 @@
         </div>
         <span class="text-xs text-gray-400">风险预测与测评结果不一致（差异 ≥ 1级）</span>
       </div>
-      <el-table :data="abnormalUsers" size="small" stripe style="width: 100%"
+      <el-table v-loading="loading" :data="abnormalUsers" size="small" stripe style="width: 100%"
         :header-cell-style="{ background: '#f5f7fa', color: '#303133', fontWeight: 600 }">
         <el-table-column prop="name" label="异常用户姓名" width="140" />
         <el-table-column prop="questionnaireLevel" label="问卷测评等级" width="130" align="center">
@@ -60,25 +60,31 @@
 </template>
 
 <script setup>
-import { markRaw } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, DataAnalysis, Warning, CircleCheck } from '@element-plus/icons-vue'
+import { resolveIcons } from '../utils/iconMap'
+import { getDashboardStats, getAbnormalUsers } from '../api'
 
 const router = useRouter()
+const loading = ref(false)
+const stats = ref([])
+const abnormalUsers = ref([])
 
-const stats = [
-  { label: '管理客户总数', value: '12,847', icon: markRaw(User), bgClass: 'bg-blue-50', iconClass: 'text-blue-500', change: '↑ 较上月 +3.2%', changeClass: 'text-green-500' },
-  { label: '已完成评估', value: '11,203', icon: markRaw(CircleCheck), bgClass: 'bg-green-50', iconClass: 'text-green-500', change: '↑ 评估完成率 87.2%', changeClass: 'text-green-500' },
-  { label: '风险预警数', value: '236', icon: markRaw(Warning), bgClass: 'bg-red-50', iconClass: 'text-red-500', change: '↑ 较上月 +12', changeClass: 'text-red-500' },
-  { label: '待处理工单', value: '48', icon: markRaw(DataAnalysis), bgClass: 'bg-orange-50', iconClass: 'text-orange-500', change: '↓ 较上月 -5', changeClass: 'text-green-500' },
-]
+async function fetchData() {
+  loading.value = true
+  try {
+    const [statsData, abnormalData] = await Promise.all([
+      getDashboardStats(),
+      getAbnormalUsers(),
+    ])
+    stats.value = resolveIcons(statsData)
+    abnormalUsers.value = abnormalData
+  } finally {
+    loading.value = false
+  }
+}
 
-const abnormalUsers = [
-  { id: 'C00012857', name: '张景豪', questionnaireLevel: 5, predictLevel: 3, assessTime: '2026-05-18', diff: -2 },
-  { id: 'C00012858', name: '王建国', questionnaireLevel: 4, predictLevel: 5, assessTime: '2026-06-10', diff: 1 },
-  { id: 'C00012859', name: '赵思远', questionnaireLevel: 5, predictLevel: 3, assessTime: '2026-07-02', diff: -2 },
-  { id: 'C00012860', name: '陈晓明', questionnaireLevel: 3, predictLevel: 5, assessTime: '2026-08-01', diff: 2 },
-]
+onMounted(fetchData)
 
 function goOverview(id, name) {
   router.push({ path: '/suitability/overview', query: { id, name } })

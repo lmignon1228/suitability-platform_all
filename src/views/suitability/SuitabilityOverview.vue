@@ -19,8 +19,8 @@
       </div>
     </div>
 
-    <!-- Sub-module Entry Cards (moved up) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+    <!-- Sub-module Entry Cards -->
+    <div v-loading="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
       <div v-for="(card, idx) in currentModuleCards" :key="idx"
         class="bg-white rounded-xl p-3 border border-gray-100 cursor-pointer hover:shadow-lg transition-all group"
         :class="{ 'cursor-default': card.disabled }"
@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <!-- Charts Row (moved down) -->
+    <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
       <div class="lg:col-span-2 bg-white rounded-xl p-3 border border-gray-100 flex flex-col justify-between">
         <div>
@@ -63,7 +63,6 @@
           </div>
           <div ref="trendChartRef" class="w-full" style="height: 260px;"></div>
         </div>
-        <!-- 趋势图解读 -->
         <div class="mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100 flex items-start gap-2.5">
           <div class="px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-xs font-semibold whitespace-nowrap mt-0.5">
             趋势解读
@@ -77,7 +76,6 @@
           <h3 class="text-sm font-semibold text-gray-700 mb-2">综合风险能力雷达图</h3>
           <div ref="radarChartRef" class="w-full" style="height: 240px;"></div>
         </div>
-        <!-- 雷达图解读 -->
         <div class="mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
           <div class="text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
             <span>四维风险能力评估</span>
@@ -126,11 +124,13 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, markRaw, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
-import { TrendCharts, Operation, Reading, Monitor, WarningFilled, InfoFilled } from '@element-plus/icons-vue'
+import { WarningFilled, InfoFilled } from '@element-plus/icons-vue'
 import CustomerSearchBar from '../../components/CustomerSearchBar.vue'
+import { getCustomerRiskData } from '../../api'
+import { resolveIcons } from '../../utils/iconMap'
 
 const route = useRoute()
 const trendChartRef = ref(null)
@@ -141,233 +141,41 @@ let radarChart = null
 const routeCustomerId = computed(() => route.query.id || '')
 const routeCustomerName = computed(() => route.query.name || '')
 const currentCustomerId = ref(routeCustomerId.value || 'C00008231')
+const loading = ref(false)
 
-// ── Per-customer mock data ──
-const customerDataMap = {
-  'C00012857': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C5', valueClass: 'text-red-500', sub: '2026-05-18 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C3', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C4', valueClass: 'text-gray-700', sub: '2026-04', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '-2', unit: '级', valueClass: 'text-orange-500', sub: '问卷高于动态', subClass: 'text-orange-400' },
-      { label: '本月变化', value: '↓1', unit: '级', valueClass: 'text-green-500', sub: '较上月下降', subClass: 'text-green-400' },
-    ],
-    trend: {
-      questionnaire: [5,5,5,5,5,5,5,5,5,5,5,5,null],
-      dynamic: [3.8,3.6,3.5,3.9,4.1,4.0,3.7,3.5,3.3,3.4,3.2,3.0,3.1],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,3.0,3.1],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,5,5],
-    },
-    radar: { current: [2.6,4.3,3.2,2.8], last: [3.1,3.8,3.2,3.0] },
-    modules: [
-      { title: '客观风险承受力', value: 'C2.6', trend: '↓ 下降', icon: markRaw(TrendCharts), tag: '下降', tagType: 'danger', route: '/suitability/objective', iconBg: 'bg-red-50', iconColor: 'text-red-500', valueClass: 'text-red-500', trendClass: 'text-red-400 text-xs', desc: '资产规模缩减，风险承受能力下降', disabled: false },
-      { title: '风险偏好', value: 'C4.3', trend: '↑ 上升', icon: markRaw(Operation), tag: '上升', tagType: 'success', route: '/suitability/preference', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '高风险产品购买占比增加', disabled: false },
-      { title: '风险认知', value: 'C3.2', trend: '— 稳定', icon: markRaw(Reading), tag: '稳定', tagType: 'info', route: '/suitability/cognition', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '投资知识测试得分稳定', disabled: false },
-      { title: '异常行为监测', value: '高关注', trend: '4 条待处理', icon: markRaw(Monitor), tag: '预警', tagType: 'warning', route: '', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', valueClass: 'text-orange-500', trendClass: 'text-orange-400 text-xs', desc: '近期存在异常交易模式', disabled: true },
-    ],
-    reasons: [
-      { title: '客观风险承受力大幅下降，综合等级被拖累', detail: '• 具体行为：近3个月可投资资产从520万降至310万（降幅40.4%），负债收入比从0.8升至1.3。\n• 行为解释：资产规模显著缩水且流动性趋紧，导致客观风险承受力评分从C3.5下调至C2.6，综合等级被拉低2级。' },
-      { title: '频繁高风险衍生品交易触发监控预警', detail: '• 具体行为：近30天内交易衍生品12次，触发高频高风险交易阈值。\n• 行为解释：高风险偏好交易加剧风险暴露，引发系统监控预警，进一步压低动态评级。' },
-      { title: '问卷评级与实际交易偏好严重背离', detail: '• 具体行为：问卷评定为C5（进取型），但实际客观资产与负债指标已显著恶化。\n• 行为解释：触发"行为/资产与问卷不符"规则，动态综合等级向下修正2级至C3。' },
-    ],
-    trendInterp: '客户问卷评级保持在 <span class="text-red-500 font-semibold">C5 (进取型)</span>，但动态综合风险等级在近1年内从 C3.8 持续下行至 <span class="text-primary-600 font-semibold">C3.0</span>，出现 <span class="text-orange-500 font-semibold">-2级倒挂</span>。主要是由于近期资产大幅缩减与高风险杠杆操作引发风控预警，建议人工介入复核。',
-    radarInterp: '当前客观承受力(<span class="text-red-500 font-medium">C2.6</span>)相比上月进一步下滑；虽然风险偏好(<span class="text-green-600 font-medium">C4.3</span>)依然高企，但受客观能力与异常交易行为拖累，综合评估出现较大幅度下调。',
-    suggestions: [
-      { title: '建议重新进行问卷评估', detail: '距离上次问卷已超过6个月，建议安排重新测评' },
-      { title: '建议适当降低产品推荐等级', detail: '当前持有产品风险等级与动态风险承受力不匹配' },
-      { title: '建议进行投资者教育回访', detail: '认知得分与实际行为存在偏差，建议安排专项回访' },
-      { title: '触发合规审查流程', detail: '问卷等级与动态等级偏差达2级，需合规部门确认' },
-    ],
-  },
-  'C00012858': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C4', valueClass: 'text-yellow-500', sub: '2026-06-10 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C5', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C4', valueClass: 'text-gray-700', sub: '2026-05', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '+1', unit: '级', valueClass: 'text-orange-500', sub: '动态高于问卷', subClass: 'text-orange-400' },
-      { label: '本月变化', value: '↑1', unit: '级', valueClass: 'text-red-500', sub: '较上月上升', subClass: 'text-red-400' },
-    ],
-    trend: {
-      questionnaire: [4,4,4,4,4,4,4,4,4,4,4,4,null],
-      dynamic: [3.2,3.4,3.5,3.6,3.8,4.0,4.1,4.3,4.5,4.6,4.8,4.9,5.0],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,4.9,5.0],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,4,4],
-    },
-    radar: { current: [4.5,4.8,4.0,3.5], last: [4.0,4.2,3.8,3.2] },
-    modules: [
-      { title: '客观风险承受力', value: 'C4.5', trend: '↑ 上升', icon: markRaw(TrendCharts), tag: '上升', tagType: 'success', route: '/suitability/objective', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '资产规模持续增长，风险承受力提升', disabled: false },
-      { title: '风险偏好', value: 'C4.8', trend: '↑ 上升', icon: markRaw(Operation), tag: '上升', tagType: 'success', route: '/suitability/preference', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '高风险产品购买占比持续增加', disabled: false },
-      { title: '风险认知', value: 'C4.0', trend: '— 稳定', icon: markRaw(Reading), tag: '稳定', tagType: 'info', route: '/suitability/cognition', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '投资知识测试得分中等偏上', disabled: false },
-      { title: '异常行为监测', value: '一般关注', trend: '1 条待处理', icon: markRaw(Monitor), tag: '关注', tagType: 'warning', route: '', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', valueClass: 'text-orange-500', trendClass: 'text-orange-400 text-xs', desc: '交易行为基本正常', disabled: true },
-    ],
-    reasons: [
-      { title: '实际风险偏好持续高于问卷评级，动态等级上移', detail: '• 具体行为：客户频繁进行高风险交易，近60天内连续购买R4及以上高风险产品7次。\n• 行为解释：主观风险偏好得分飙升至C4.8，驱动动态等级上升至C5（高于问卷1级）。' },
-    ],
-    trendInterp: '客户问卷评估为 <span class="text-yellow-600 font-semibold">C4</span>，但其动态综合风险等级呈现连续抬升趋势，已由 C3.2 上升至 <span class="text-primary-600 font-semibold">C5.0</span>，表现出高出问卷 <span class="text-orange-500 font-semibold">+1级</span> 的交易热度与风险偏好。',
-    radarInterp: '客观承受力(<span class="text-green-600 font-medium">C4.5</span>)与风险偏好(<span class="text-green-600 font-medium">C4.8</span>)较上月均有明显扩张，各项维度均达到高风险承受水平，建议同步上调问卷评级。',
-    suggestions: [
-      { title: '建议上调问卷风险等级', detail: '实际行为显示客户风险偏好已提升，建议重新测评' },
-      { title: '建议关注持仓集中度', detail: '单一高风险产品持仓占比达45%，需提示风险' },
-    ],
-  },
-  'C00012859': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C5', valueClass: 'text-red-500', sub: '2026-07-02 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C3', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C3', valueClass: 'text-gray-700', sub: '2026-06', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '-2', unit: '级', valueClass: 'text-orange-500', sub: '问卷高于动态', subClass: 'text-orange-400' },
-      { label: '本月变化', value: '→0', unit: '级', valueClass: 'text-gray-500', sub: '与上月持平', subClass: 'text-gray-400' },
-    ],
-    trend: {
-      questionnaire: [5,5,5,5,5,5,5,5,5,5,5,5,null],
-      dynamic: [3.5,3.4,3.3,3.2,3.3,3.4,3.3,3.2,3.1,3.2,3.2,3.2,3.2],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,3.2,3.2],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,5,5],
-    },
-    radar: { current: [3.0,3.5,3.8,2.5], last: [3.1,3.4,3.7,2.6] },
-    modules: [
-      { title: '客观风险承受力', value: 'C3.0', trend: '— 稳定', icon: markRaw(TrendCharts), tag: '稳定', tagType: 'info', route: '/suitability/objective', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '资产规模稳定，风险承受力中等', disabled: false },
-      { title: '风险偏好', value: 'C3.5', trend: '— 稳定', icon: markRaw(Operation), tag: '稳定', tagType: 'info', route: '/suitability/preference', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '产品购买行为较为均衡', disabled: false },
-      { title: '风险认知', value: 'C3.8', trend: '— 稳定', icon: markRaw(Reading), tag: '稳定', tagType: 'info', route: '/suitability/cognition', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '投资知识测试得分中等', disabled: false },
-      { title: '异常行为监测', value: '低关注', trend: '0 条待处理', icon: markRaw(Monitor), tag: '正常', tagType: 'success', route: '', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '交易行为正常无异常', disabled: true },
-    ],
-    reasons: [
-      { title: '客观资产与经验不支持C5最高评级', detail: '• 具体行为：客户客观资产规模仅能支撑中等风险水平，仅有3年实际投资经验。\n• 行为解释：客观承受力得分仅为C3.0，与问卷C5存在明显偏差，拉低综合动态等级。' },
-    ],
-    trendInterp: '客户问卷填报为最高的 <span class="text-red-500 font-semibold">C5</span> 级，但近12个月动态综合风险等级长期横盘在 <span class="text-primary-600 font-semibold">C3.2 左右</span>，偏差达 <span class="text-orange-500 font-semibold">-2级</span>。主要因其客观资产规模与投资年限无法支撑 C5 的激进评级。',
-    radarInterp: '各项能力维度非常平稳，风险认知(<span class="text-blue-600 font-medium">C3.8</span>)良好，但客观承受力(<span class="text-blue-600 font-medium">C3.0</span>)偏低，呈典型"认知高于实际承受力"的特征。',
-    suggestions: [
-      { title: '建议下调问卷风险等级至C3', detail: '客观资产与投资经验均不支持C5评级' },
-      { title: '建议安排风险承受力专项评估', detail: '问卷与客观指标偏差达2级，需专项复核' },
-    ],
-  },
-  'C00012860': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C3', valueClass: 'text-blue-500', sub: '2026-08-01 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C5', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C4', valueClass: 'text-gray-700', sub: '2026-07', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '+2', unit: '级', valueClass: 'text-orange-500', sub: '动态高于问卷', subClass: 'text-orange-400' },
-      { label: '本月变化', value: '↑1', unit: '级', valueClass: 'text-red-500', sub: '较上月上升', subClass: 'text-red-400' },
-    ],
-    trend: {
-      questionnaire: [3,3,3,3,3,3,3,3,3,3,3,3,null],
-      dynamic: [3.0,3.2,3.4,3.5,3.7,3.9,4.1,4.3,4.5,4.7,4.8,4.9,5.0],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,4.9,5.0],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,3,3],
-    },
-    radar: { current: [4.8,5.0,4.2,3.8], last: [4.3,4.5,4.0,3.5] },
-    modules: [
-      { title: '客观风险承受力', value: 'C4.8', trend: '↑ 上升', icon: markRaw(TrendCharts), tag: '上升', tagType: 'success', route: '/suitability/objective', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '可投资资产大幅增长', disabled: false },
-      { title: '风险偏好', value: 'C5.0', trend: '↑ 上升', icon: markRaw(Operation), tag: '上升', tagType: 'success', route: '/suitability/preference', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '激进型投资行为明显', disabled: false },
-      { title: '风险认知', value: 'C4.2', trend: '↑ 上升', icon: markRaw(Reading), tag: '上升', tagType: 'success', route: '/suitability/cognition', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '投资知识测试得分提升', disabled: false },
-      { title: '异常行为监测', value: '高关注', trend: '3 条待处理', icon: markRaw(Monitor), tag: '预警', tagType: 'warning', route: '', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', valueClass: 'text-orange-500', trendClass: 'text-orange-400 text-xs', desc: '高杠杆操作频次较高', disabled: true },
-    ],
-    reasons: [
-      { title: '实际风险偏好激进，远超问卷评估，动态等级偏离2级', detail: '• 具体行为：问卷填写为C3稳健型，但实际交易频次与风险偏好指标已全面达到C5激进水平。\n• 行为解释：主观偏好与实际行为激增，导致动态等级向上偏离问卷2级。' },
-      { title: '衍生品及高杠杆持仓高度集中，风险敞口过大', detail: '• 具体行为：衍生品及杠杆ETF持仓占比已高达52%，近30天交易频次高达38次。\n• 行为解释：高杠杆持仓大幅抬升整体风险敞口，高频交易触发异常行为高关注预警。' },
-    ],
-    trendInterp: '客户静态问卷为 <span class="text-blue-600 font-semibold">C3</span>，但近一年动态风险等级直线上升至 <span class="text-primary-600 font-semibold">C5.0</span>，呈现极强的正向偏离（<span class="text-orange-500 font-semibold">+2级</span>）。反映其近期发生了剧烈的激进投资行为转型。',
-    radarInterp: '风险偏好飙升至极限值 <span class="text-green-600 font-medium">C5.0</span>，客观承受力(<span class="text-green-600 font-medium">C4.8</span>)大幅强于上月，但伴随高杠杆衍生品操作，导致异常行为控制维度风险敞口快速放大。',
-    suggestions: [
-      { title: '强烈建议重新问卷评估', detail: '偏差达2级，当前问卷已无法反映真实风险偏好' },
-      { title: '建议限制杠杆产品买入', detail: '高杠杆产品占比过高，需进行适当性适当性提示' },
-      { title: '触发合规审查', detail: '问卷与动态偏差达2级，需合规部门专项审查' },
-    ],
-  },
-  'C00008231': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C3', valueClass: 'text-blue-500', sub: '2026-03-15 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C3', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C3', valueClass: 'text-gray-700', sub: '2026-02', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '0', unit: '级', valueClass: 'text-green-500', sub: '问卷与动态一致', subClass: 'text-green-400' },
-      { label: '本月变化', value: '→0', unit: '级', valueClass: 'text-gray-500', sub: '与上月持平', subClass: 'text-gray-400' },
-    ],
-    trend: {
-      questionnaire: [3,3,3,3,3,3,3,3,3,3,3,3,null],
-      dynamic: [3.1,3.0,3.1,3.2,3.1,3.0,3.1,3.2,3.1,3.0,3.1,3.1,3.1],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,3.1,3.1],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,3,3],
-    },
-    radar: { current: [3.2,3.0,3.5,3.1], last: [3.1,3.0,3.4,3.0] },
-    modules: [
-      { title: '客观风险承受力', value: 'C3.2', trend: '— 稳定', icon: markRaw(TrendCharts), tag: '稳定', tagType: 'info', route: '/suitability/objective', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '资产规模稳定，风险承受力中等', disabled: false },
-      { title: '风险偏好', value: 'C3.0', trend: '— 稳定', icon: markRaw(Operation), tag: '稳定', tagType: 'info', route: '/suitability/preference', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '产品购买行为均衡', disabled: false },
-      { title: '风险认知', value: 'C3.5', trend: '— 稳定', icon: markRaw(Reading), tag: '稳定', tagType: 'info', route: '/suitability/cognition', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '投资知识测试得分中等偏上', disabled: false },
-      { title: '异常行为监测', value: '低关注', trend: '0 条待处理', icon: markRaw(Monitor), tag: '正常', tagType: 'success', route: '', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '交易行为正常', disabled: true },
-    ],
-    reasons: [
-      { title: '指标运行平稳，暂无风险下调原因', detail: '• 具体行为：近12个月资产规模、持仓结构及交易行为均与问卷测评保持高度一致。\n• 行为解释：动态综合等级（C3）与问卷等级（C3）完全匹配，未触发任何风控下调规则。' },
-    ],
-    trendInterp: '问卷测评结果（<span class="text-blue-600 font-semibold">C3</span>）与近12个月动态综合风险走势（<span class="text-primary-600 font-semibold">C3.1</span>）高度重合，偏差为 <span class="text-green-600 font-semibold">0级</span>，表现出极高的画像匹配度与行为稳定性。',
-    radarInterp: '四维能力分布均衡且与上月基本持平，客观承受力(<span class="text-blue-600 font-medium">C3.2</span>)、风险偏好(<span class="text-blue-600 font-medium">C3.0</span>)均在中等稳健区间，无异常风险暴露。',
-    suggestions: [
-      { title: '建议维持当前风险评级', detail: '问卷与动态一致，无需调整' },
-      { title: '建议定期回访跟进', detail: '建议每季度进行一次适当性回访' },
-    ],
-  },
-  'C00008232': {
-    kpi: [
-      { label: '最近问卷等级', value: 'C4', valueClass: 'text-yellow-500', sub: '2026-04-20 测评', subClass: 'text-gray-400' },
-      { label: '当前动态综合风险等级', value: 'C3', valueClass: 'text-primary-600', sub: '实时计算', subClass: 'text-primary-400' },
-      { label: '上月动态综合风险等级', value: 'C4', valueClass: 'text-gray-700', sub: '2026-03', subClass: 'text-gray-400' },
-      { label: '等级偏差', value: '-1', unit: '级', valueClass: 'text-orange-500', sub: '问卷略高于动态', subClass: 'text-orange-400' },
-      { label: '本月变化', value: '↓1', unit: '级', valueClass: 'text-green-500', sub: '较上月下降', subClass: 'text-green-400' },
-    ],
-    trend: {
-      questionnaire: [4,4,4,4,4,4,4,4,4,4,4,4,null],
-      dynamic: [4.0,3.9,3.8,3.7,3.8,3.7,3.6,3.5,3.4,3.5,3.4,3.3,3.3],
-      dynamicPredict: [null,null,null,null,null,null,null,null,null,null,null,3.3,3.3],
-      questionnairePredict: [null,null,null,null,null,null,null,null,null,null,null,4,4],
-    },
-    radar: { current: [3.0,3.5,3.2,2.8], last: [3.3,3.8,3.3,3.0] },
-    modules: [
-      { title: '客观风险承受力', value: 'C3.0', trend: '↓ 下降', icon: markRaw(TrendCharts), tag: '下降', tagType: 'danger', route: '/suitability/objective', iconBg: 'bg-red-50', iconColor: 'text-red-500', valueClass: 'text-red-500', trendClass: 'text-red-400 text-xs', desc: '可投资资产小幅缩减', disabled: false },
-      { title: '风险偏好', value: 'C3.5', trend: '↓ 下降', icon: markRaw(Operation), tag: '下降', tagType: 'danger', route: '/suitability/preference', iconBg: 'bg-red-50', iconColor: 'text-red-500', valueClass: 'text-red-500', trendClass: 'text-red-400 text-xs', desc: '高风险产品购买减少', disabled: false },
-      { title: '风险认知', value: 'C3.2', trend: '— 稳定', icon: markRaw(Reading), tag: '稳定', tagType: 'info', route: '/suitability/cognition', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', valueClass: 'text-blue-500', trendClass: 'text-blue-400 text-xs', desc: '投资知识测试得分稳定', disabled: false },
-      { title: '异常行为监测', value: '低关注', trend: '0 条待处理', icon: markRaw(Monitor), tag: '正常', tagType: 'success', route: '', iconBg: 'bg-green-50', iconColor: 'text-green-500', valueClass: 'text-green-500', trendClass: 'text-green-400 text-xs', desc: '交易行为正常', disabled: true },
-    ],
-    reasons: [
-      { title: '可投资资产小幅缩减，客观承受力微调下降', detail: '• 具体行为：近2个月可投资资产从280万降至220万，资本缓冲空间有所收窄。\n• 行为解释：客观风险承受力由C3.3微调至C3.0，驱动动态等级下调1级。' },
-      { title: '高风险产品主动减仓，综合等级回归C3', detail: '• 具体行为：高风险持仓比例从35%自主降至22%，交易偏好有所收敛。\n• 行为解释：客户实际风险偏好主动降低，综合动态等级从C4调整为C3。' },
-    ],
-    trendInterp: '客户问卷等级为 <span class="text-yellow-600 font-semibold">C4</span>，近12个月动态风险等级由 C4.0 缓步下行至 <span class="text-primary-600 font-semibold">C3.3</span>，存在 <span class="text-orange-500 font-semibold">-1级</span> 的微幅回落，整体属于受资产波动影响的正常调整。',
-    radarInterp: '客观承受力(<span class="text-red-500 font-medium">C3.0</span>)和风险偏好(<span class="text-red-500 font-medium">C3.5</span>)较上月均有轻微收缩，反映客户在资产变动后自主采取了相对保守的避险策略。',
-    suggestions: [
-      { title: '建议关注资产变动原因', detail: '资产下降原因需进一步了解' },
-      { title: '建议维持当前问卷评级', detail: '偏差仅1级，暂不需强制重新测评' },
-    ],
-  },
+const currentKpiCards = ref([])
+const currentModuleCards = ref([])
+const currentDeclineReasons = ref([])
+const currentSuggestions = ref([])
+const currentTrendInterp = ref('')
+const currentRadarInterp = ref('')
+
+const months = ['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07预测']
+
+async function fetchAndApply(id) {
+  loading.value = true
+  try {
+    const data = await getCustomerRiskData(id)
+    const ov = data.overview
+    currentKpiCards.value = ov.kpi || []
+    currentModuleCards.value = resolveIcons(ov.modules || [])
+    currentDeclineReasons.value = ov.reasons || []
+    currentSuggestions.value = ov.suggestions || []
+    currentTrendInterp.value = ov.trendInterp || ''
+    currentRadarInterp.value = ov.radarInterp || ''
+    nextTick(() => {
+      refreshTrendChart(ov.trend || {})
+      refreshRadarChart(ov.radar || {})
+    })
+  } finally {
+    loading.value = false
+  }
 }
 
-const defaultKey = 'C00008231'
-
-function getData(key) {
-  return customerDataMap[key] || customerDataMap[defaultKey]
-}
-
-const currentKpiCards = ref(getData(currentCustomerId.value).kpi)
-const currentModuleCards = ref(getData(currentCustomerId.value).modules)
-const currentDeclineReasons = ref(getData(currentCustomerId.value).reasons)
-const currentSuggestions = ref(getData(currentCustomerId.value).suggestions)
-const currentTrendInterp = ref(getData(currentCustomerId.value).trendInterp || '')
-const currentRadarInterp = ref(getData(currentCustomerId.value).radarInterp || '')
-
-// ── Customer change handler ──
 function onCustomerChange({ id }) {
   currentCustomerId.value = id
-  const data = getData(id)
-  currentKpiCards.value = data.kpi
-  currentModuleCards.value = data.modules
-  currentDeclineReasons.value = data.reasons
-  currentSuggestions.value = data.suggestions
-  currentTrendInterp.value = data.trendInterp || ''
-  currentRadarInterp.value = data.radarInterp || ''
-  refreshTrendChart(data.trend)
-  refreshRadarChart(data.radar)
+  fetchAndApply(id)
 }
-
-// ── Trend Chart ──
-const months = ['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07预测']
 
 function buildTrendOption(t) {
   return {
@@ -418,7 +226,6 @@ function refreshTrendChart(t) {
   trendChart.setOption(buildTrendOption(t), { notMerge: true })
 }
 
-// ── Radar Chart ──
 function buildRadarOption(r) {
   return {
     tooltip: { backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e5eaf2', borderWidth: 1, textStyle: { color: '#303133', fontSize: 12 } },
@@ -451,16 +258,11 @@ function handleResize() {
 }
 
 onMounted(() => {
-  const data = getData(currentCustomerId.value)
   trendChart = echarts.init(trendChartRef.value)
   radarChart = echarts.init(radarChartRef.value)
-  trendChart.setOption(buildTrendOption(data.trend))
-  radarChart.setOption(buildRadarOption(data.radar))
   window.addEventListener('resize', handleResize)
-  nextTick(() => {
-    trendChart?.resize()
-    radarChart?.resize()
-  })
+  fetchAndApply(currentCustomerId.value)
+  nextTick(() => { trendChart?.resize(); radarChart?.resize() })
 })
 
 onBeforeUnmount(() => {

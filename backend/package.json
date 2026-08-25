@@ -1,0 +1,16 @@
+{
+  "name": "suitability-platform-backend",
+  "version": "1.0.0",
+  "description": "Backend API for suitability platform",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:init": "node src/db-init.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}
