@@ -1,6 +1,6 @@
 /*  seed.js — 轻量级数据初始化脚本
  *  用法:  node seed.js
- *  前提:  1) PostgreSQL 已启动，数据库 suitability_db 已创建
+ *  前提:  1) MySQL 已启动，数据库 suitability_db 已创建
  *         2) 已执行 sql/schema.sql 建表
  *         3) 已 npm install
  */
@@ -9,7 +9,7 @@ const fs = require('fs')
 const path = require('path')
 
 /* ================================================================
- * 1. 客户基础信息（对应 customers 表 + 异常用户监控列表）
+ * 1. 客户基础信息
  * ================================================================ */
 const CUSTOMERS = [
   { id:'C00012857', name:'张景豪', ql:5, pl:3, assess:'2026-05-18', diff:-2 },
@@ -25,53 +25,28 @@ const MONTHS = ['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12',
 const MONTHS_12 = MONTHS.slice(0, 12)
 
 /* ================================================================
- * 2. 辅助函数 — 生成趋势数组
+ * 2. 辅助函数
  * ================================================================ */
-
-/** 生成问卷等级数组（常量 + 末尾 null 预测位） */
 function qArr(val) { return Array(12).fill(val).concat([null]) }
-
-/** 生成问卷预测数组 */
 function qPArr(val) { return Array(11).fill(null).concat([val, val]) }
-
-/** 生成动态数组（12 实际 + 1 预测） */
 function dArr(base, deltaPerMonth, endVal) {
   const arr = []
   for (let i = 0; i < 12; i++) arr.push(+(base + deltaPerMonth * i).toFixed(1))
   arr.push(endVal !== undefined ? endVal : arr[11])
   return arr
 }
-
-/** 生成动态预测数组 */
-function dPArr(nullCount, ...vals) {
-  return Array(nullCount).fill(null).concat(vals)
-}
-
-/** 生成常量动态数组 */
+function dPArr(nullCount, ...vals) { return Array(nullCount).fill(null).concat(vals) }
 function dConst(val) { return Array(12).fill(val).concat([val]) }
-
-/** 生成趋势数据（overview 和各子模块通用格式） */
 function makeTrend(qVals, dVals, qPVals, dPVals) {
   return { questionnaire: qVals, dynamic: dVals, dynamicPredict: dPVals, questionnairePredict: qPVals }
 }
-
-/** 子模块趋势格式（q/d/qP/dP） */
-function makeSubTrend(q, d, qP, dP) {
-  return { q, d, dP, qP }
-}
+function makeSubTrend(q, d, qP, dP) { return { q, d, dP, qP } }
 
 /* ================================================================
  * 3. 各客户完整数据生成器
- *    每个函数返回 { overview, objective, preference, cognition }
  * ================================================================ */
 
 function buildC00012857() {
-  // 张景豪：问卷C5，动态C3，下降型
-  const dynTrend = [3.8,3.6,3.5,3.9,4.1,4.0,3.7,3.5,3.3,3.4,3.2,3.0,3.1]
-  const objDyn   = [3.1,3.0,2.9,3.2,3.3,3.2,2.8,2.7,2.6,2.7,2.6,2.6,null]
-  const prefDyn  = [3.5,3.6,3.5,3.7,3.8,3.9,3.9,4.0,4.1,4.2,4.3,4.3,null]
-  const cogDyn   = [3.0,3.1,3.0,3.1,3.2,3.2,3.1,3.2,3.4,3.3,3.2,3.2,null]
-
   return {
     overview: {
       kpi: [
@@ -81,7 +56,7 @@ function buildC00012857() {
         { label:'等级偏差', value:'-2', unit:'级', valueClass:'text-orange-500', sub:'问卷高于动态', subClass:'text-orange-400' },
         { label:'本月变化', value:'↓1', unit:'级', valueClass:'text-green-500', sub:'较上月下降', subClass:'text-green-400' },
       ],
-      trend: makeTrend(qArr(5), dynTrend, qPArr(5), dPArr(11, 3.0, 3.1)),
+      trend: makeTrend(qArr(5), [3.8,3.6,3.5,3.9,4.1,4.0,3.7,3.5,3.3,3.4,3.2,3.0,3.1], qPArr(5), dPArr(11, 3.0, 3.1)),
       radar: { current:[2.6,4.3,3.2,2.8], last:[3.1,3.8,3.2,3.0] },
       modules: [
         { title:'客观风险承受力', value:'C2.6', trend:'↓ 下降', iconName:'TrendCharts', tag:'下降', tagType:'danger', route:'/suitability/objective', iconBg:'bg-red-50', iconColor:'text-red-500', valueClass:'text-red-500', trendClass:'text-red-400 text-xs', desc:'资产规模缩减，风险承受能力下降', disabled:false },
@@ -111,7 +86,7 @@ function buildC00012857() {
         { label:'最近问卷等级', value:'C5', valueClass:'text-primary-600', sub:'2026-05-15 测评', subClass:'text-gray-400' },
         { label:'偏差值', value:'-2.4', unit:'级', valueClass:'text-red-500', sub:'问卷远高于客观', subClass:'text-red-400' },
       ],
-      trend: makeSubTrend(qArr(5), objDyn, qPArr(5), dPArr(11, 2.6, 2.4)),
+      trend: makeSubTrend(qArr(5), [3.1,3.0,2.9,3.2,3.3,3.2,2.8,2.7,2.6,2.7,2.6,2.6,null], qPArr(5), dPArr(11, 2.6, 2.4)),
       months: MONTHS,
       interp: { trendDesc:'近12个月客观风险承受力呈<span class="text-red-500 font-medium">下降</span>趋势，从C3.1降至C2.6', turningPoint:'2026-01起明显下降，与可投资资产大幅缩减高度相关', relationToQ:'问卷评定C5（保守型），客观仅C2.6（积极型），严重不一致', suggestion:'建议重新进行问卷评估并适当降低产品推荐等级' },
       corr: { risk:[3.1,3.0,2.9,3.2,3.3,3.2,2.8,2.7,2.6,2.7,2.6,2.6], hs:[4200,4100,3950,4050,4150,4100,3850,3780,3700,3750,3680,3620] },
@@ -132,7 +107,7 @@ function buildC00012857() {
         { label:'最近问卷等级', value:'C5', valueClass:'text-primary-600', sub:'2026-05-15 测评', subClass:'text-gray-400' },
         { label:'偏差值', value:'-0.7', unit:'级', valueClass:'text-orange-500', sub:'问卷略高于偏好', subClass:'text-orange-400' },
       ],
-      trend: makeSubTrend(qArr(5), prefDyn, qPArr(5), dPArr(11, 4.3, 4.4)),
+      trend: makeSubTrend(qArr(5), [3.5,3.6,3.5,3.7,3.8,3.9,3.9,4.0,4.1,4.2,4.3,4.3,null], qPArr(5), dPArr(11, 4.3, 4.4)),
       interp: { trendDesc:'近12个月风险偏好呈<span class="text-green-500 font-medium">上升</span>趋势，从C3.5升至C4.3', turningPoint:'2026-02起快速上升，与高风险产品购买频率增加高度相关', relationToQ:'问卷评定C5（保守型），实际偏好C4.3（进取型），严重不一致', suggestion:'建议重新进行风险偏好问卷评估，确认客户真实偏好' },
       scatter: [[12,3.5,20],[15,3.6,25],[18,3.5,22],[20,3.7,30],[14,3.8,18],[22,3.9,35],[25,3.9,28],[28,4.0,40],[30,4.1,32],[32,4.2,45],[35,4.3,38],[38,4.3,50]],
       scatterInterp: '散点图分布呈现明显的<span class="text-green-600 font-medium">正向扩张特征</span>。当市场波动率从 12% 增加至 38% 时，客户风险偏好由 C3.5 快速上升至 C4.3，且交易次数（气泡尺寸）急剧放大至 50 次。表明该客户属于典型的"越波动越活跃"的进取型投资者。',
@@ -151,7 +126,7 @@ function buildC00012857() {
         { label:'最近问卷等级', value:'C5', valueClass:'text-primary-600', sub:'2026-05-15 测评', subClass:'text-gray-400' },
         { label:'偏差值', value:'-1.8', unit:'级', valueClass:'text-orange-500', sub:'问卷高于认知', subClass:'text-orange-400' },
       ],
-      trend: makeSubTrend(qArr(5), cogDyn, qPArr(5), dPArr(11, 3.2, 3.3)),
+      trend: makeSubTrend(qArr(5), [3.0,3.1,3.0,3.1,3.2,3.2,3.1,3.2,3.4,3.3,3.2,3.2,null], qPArr(5), dPArr(11, 3.2, 3.3)),
       interp: { trendDesc:'近12个月风险认知保持<span class="text-blue-500 font-medium">稳定</span>，维持在C3.2左右', turningPoint:'2026-03小幅提升至C3.4，因客户参加了投资知识培训课程', relationToQ:'问卷评定C5（保守型），认知得分C3.2（稳健型），偏差-1.8级', suggestion:'认知水平稳定，建议加强高风险产品知识教育以提升风险认知' },
       dualAxis: { knowledge:[65,68,66,70,72,70,68,71,78,75,72,72], behavior:[8,10,9,12,14,13,15,16,12,14,15,16] },
       dualAxisInterp: '客户在 2026-03 参加培训后<span class="text-blue-600 font-medium">知识得分</span>跃升至 78 分，但随后<span class="text-amber-600 font-medium">产品行为频次</span>出现小幅波动后回落至 16 次/月，表明知识转化为实际高频交易的意愿整体趋于理性。',
@@ -167,7 +142,6 @@ function buildC00012857() {
 }
 
 function buildC00012858() {
-  // 王建国：问卷C4，动态C5，上升型
   return {
     overview: {
       kpi: [
@@ -259,7 +233,6 @@ function buildC00012858() {
 }
 
 function buildC00012859() {
-  // 赵思远：问卷C5，动态C3，稳定偏低型
   return {
     overview: {
       kpi: [
@@ -351,7 +324,6 @@ function buildC00012859() {
 }
 
 function buildC00012860() {
-  // 陈晓明：问卷C3，动态C5，快速上升型
   return {
     overview: {
       kpi: [
@@ -377,7 +349,7 @@ function buildC00012860() {
       radarInterp: '风险偏好飙升至极限值 <span class="text-green-600 font-medium">C5.0</span>，客观承受力(<span class="text-green-600 font-medium">C4.8</span>)大幅强于上月，但伴随高杠杆衍生品操作，导致异常行为控制维度风险敞口快速放大。',
       suggestions: [
         { title:'强烈建议重新问卷评估', detail:'偏差达2级，当前问卷已无法反映真实风险偏好' },
-        { title:'建议限制杠杆产品买入', detail:'高杠杆产品占比过高，需进行适当性适当性提示' },
+        { title:'建议限制杠杆产品买入', detail:'高杠杆产品占比过高，需进行适当性提示' },
         { title:'触发合规审查', detail:'问卷与动态偏差达2级，需合规部门专项审查' },
       ],
     },
@@ -445,7 +417,6 @@ function buildC00012860() {
 }
 
 function buildC00008231() {
-  // 张三：问卷C3，动态C3，稳定基准型
   return {
     overview: {
       kpi: [
@@ -537,7 +508,6 @@ function buildC00008231() {
 }
 
 function buildC00008232() {
-  // 李四：问卷C4，动态C3，轻微下降型
   return {
     overview: {
       kpi: [
@@ -646,71 +616,55 @@ const BUILDERS = {
  * ================================================================ */
 async function main() {
   console.log('--- 开始初始化数据库 ---')
-
-  // 5a. 执行建表 SQL
-  const schemaSQL = fs.readFileSync(
-    path.join(__dirname, 'sql', 'schema.sql'),
-    'utf-8'
-  )
-  await pool.query(schemaSQL)
-  console.log('✓ 表结构已创建/更新')
-
-  // 5b. 插入 customers 表
-  for (const c of CUSTOMERS) {
-    await pool.query(
-      `INSERT INTO customers (id, name, questionnaire_level, predict_level, assess_time, level_diff)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (id) DO UPDATE SET
-         name=EXCLUDED.name, questionnaire_level=EXCLUDED.questionnaire_level,
-         predict_level=EXCLUDED.predict_level, assess_time=EXCLUDED.assess_time,
-         level_diff=EXCLUDED.level_diff`,
-      [c.id, c.name, c.ql, c.pl, c.assess, c.diff]
+  try {
+    // 5a. 执行建表 SQL
+    const schemaSQL = fs.readFileSync(
+      path.join(__dirname, 'sql', 'schema.sql'),
+      'utf-8'
     )
-  }
-  console.log(`✓ 已插入 ${CUSTOMERS.length} 条客户记录`)
+    const statements = schemaSQL
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+    for (const stmt of statements) {
+      await pool.query(stmt)
+    }
+    console.log('✓ 表结构已创建/更新')
 
-  // 5c. 插入 customer_risk_data 表
-  for (const c of CUSTOMERS) {
-    const data = BUILDERS[c.id]()
-    const o = data.overview
-    const obj = data.objective
-    const pref = data.preference
-    const cog = data.cognition
-
-    await pool.query(
-      `INSERT INTO customer_risk_data (
-        customer_id,
-        overview_kpi, overview_trend, overview_radar, overview_modules,
-        overview_reasons, overview_suggestions, overview_trend_interp, overview_radar_interp,
-        objective_kpi, objective_trend, objective_months, objective_interp,
-        objective_corr, objective_market_interp, objective_metric,
-        preference_kpi, preference_trend, preference_interp,
-        preference_scatter, preference_scatter_interp, preference_metric,
-        cognition_kpi, cognition_trend, cognition_interp,
-        cognition_dual_axis, cognition_dual_axis_interp, cognition_metric
-      ) VALUES (
-        $1,
-        $2,$3,$4,$5,$6,$7,$8,$9,
-        $10,$11,$12,$13,$14,$15,$16,
-        $17,$18,$19,$20,$21,$22,
-        $23,$24,$25,$26,$27,$28
+    // 5b. 插入 customers 表
+    for (const c of CUSTOMERS) {
+      await pool.query(
+        `INSERT INTO customers (id, name, questionnaire_level, predict_level, assess_time, level_diff)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           name=VALUES(name), questionnaire_level=VALUES(questionnaire_level),
+           predict_level=VALUES(predict_level), assess_time=VALUES(assess_time),
+           level_diff=VALUES(level_diff)`,
+        [c.id, c.name, c.ql, c.pl, c.assess, c.diff]
       )
-      ON CONFLICT (customer_id) DO UPDATE SET
-        overview_kpi=EXCLUDED.overview_kpi, overview_trend=EXCLUDED.overview_trend,
-        overview_radar=EXCLUDED.overview_radar, overview_modules=EXCLUDED.overview_modules,
-        overview_reasons=EXCLUDED.overview_reasons, overview_suggestions=EXCLUDED.overview_suggestions,
-        overview_trend_interp=EXCLUDED.overview_trend_interp, overview_radar_interp=EXCLUDED.overview_radar_interp,
-        objective_kpi=EXCLUDED.objective_kpi, objective_trend=EXCLUDED.objective_trend,
-        objective_months=EXCLUDED.objective_months, objective_interp=EXCLUDED.objective_interp,
-        objective_corr=EXCLUDED.objective_corr, objective_market_interp=EXCLUDED.objective_market_interp,
-        objective_metric=EXCLUDED.objective_metric,
-        preference_kpi=EXCLUDED.preference_kpi, preference_trend=EXCLUDED.preference_trend,
-        preference_interp=EXCLUDED.preference_interp, preference_scatter=EXCLUDED.preference_scatter,
-        preference_scatter_interp=EXCLUDED.preference_scatter_interp, preference_metric=EXCLUDED.preference_metric,
-        cognition_kpi=EXCLUDED.cognition_kpi, cognition_trend=EXCLUDED.cognition_trend,
-        cognition_interp=EXCLUDED.cognition_interp, cognition_dual_axis=EXCLUDED.cognition_dual_axis,
-        cognition_dual_axis_interp=EXCLUDED.cognition_dual_axis_interp, cognition_metric=EXCLUDED.cognition_metric`,
-      [
+    }
+    console.log(`✓ 已插入 ${CUSTOMERS.length} 条客户记录`)
+
+    // 5c. 插入 customer_risk_data 表
+    for (const c of CUSTOMERS) {
+      const data = BUILDERS[c.id]()
+      const o = data.overview
+      const obj = data.objective
+      const pref = data.preference
+      const cog = data.cognition
+
+      const cols = [
+        'customer_id',
+        'overview_kpi', 'overview_trend', 'overview_radar', 'overview_modules',
+        'overview_reasons', 'overview_suggestions', 'overview_trend_interp', 'overview_radar_interp',
+        'objective_kpi', 'objective_trend', 'objective_months', 'objective_interp',
+        'objective_corr', 'objective_market_interp', 'objective_metric',
+        'preference_kpi', 'preference_trend', 'preference_interp',
+        'preference_scatter', 'preference_scatter_interp', 'preference_metric',
+        'cognition_kpi', 'cognition_trend', 'cognition_interp',
+        'cognition_dual_axis', 'cognition_dual_axis_interp', 'cognition_metric',
+      ]
+      const vals = [
         c.id,
         JSON.stringify(o.kpi), JSON.stringify(o.trend), JSON.stringify(o.radar),
         JSON.stringify(o.modules), JSON.stringify(o.reasons), JSON.stringify(o.suggestions),
@@ -723,32 +677,36 @@ async function main() {
         JSON.stringify(cog.kpi), JSON.stringify(cog.trend), JSON.stringify(cog.interp),
         JSON.stringify(cog.dualAxis), cog.dualAxisInterp, JSON.stringify(cog.metric),
       ]
-    )
-  }
-  console.log(`✓ 已插入 ${CUSTOMERS.length} 条风险数据记录`)
+      const placeholders = cols.map(() => '?').join(',')
+      const onDup = cols.filter(c => c !== 'customer_id').map(c => `${c}=VALUES(${c})`).join(',')
+      await pool.query(
+        `INSERT INTO customer_risk_data (${cols.join(',')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${onDup}`,
+        vals
+      )
+    }
+    console.log(`✓ 已插入 ${CUSTOMERS.length} 条风险数据记录`)
 
-  // 5d. 插入仪表盘统计
-  const stats = [
-    { label:'管理客户总数', value:'12,847', bg:'bg-blue-50', ic:'text-blue-500', change:'↑ 较上月 +3.2%', cc:'text-green-500', icon:'User', order:1 },
-    { label:'已完成评估', value:'11,203', bg:'bg-green-50', ic:'text-green-500', change:'↑ 评估完成率 87.2%', cc:'text-green-500', icon:'CircleCheck', order:2 },
-    { label:'风险预警数', value:'236', bg:'bg-red-50', ic:'text-red-500', change:'↑ 较上月 +12', cc:'text-red-500', icon:'Warning', order:3 },
-    { label:'待处理工单', value:'48', bg:'bg-orange-50', ic:'text-orange-500', change:'↓ 较上月 -5', cc:'text-green-500', icon:'DataAnalysis', order:4 },
-  ]
-  for (const s of stats) {
-    await pool.query(
-      `INSERT INTO dashboard_stats (label, value, bg_class, icon_class, change_text, change_class, icon_name, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (id) DO UPDATE SET
-         label=EXCLUDED.label, value=EXCLUDED.value, bg_class=EXCLUDED.bg_class,
-         icon_class=EXCLUDED.icon_class, change_text=EXCLUDED.change_text,
-         change_class=EXCLUDED.change_class, icon_name=EXCLUDED.icon_name`,
-      [s.label, s.value, s.bg, s.ic, s.change, s.cc, s.icon, s.order]
-    )
-  }
-  console.log(`✓ 已插入 ${stats.length} 条仪表盘统计`)
+    // 5d. 插入仪表盘统计
+    await pool.query('TRUNCATE TABLE dashboard_stats')
+    const stats = [
+      { label:'管理客户总数', value:'12,847', bg:'bg-blue-50', ic:'text-blue-500', change:'↑ 较上月 +3.2%', cc:'text-green-500', icon:'User', order:1 },
+      { label:'已完成评估', value:'11,203', bg:'bg-green-50', ic:'text-green-500', change:'↑ 评估完成率 87.2%', cc:'text-green-500', icon:'CircleCheck', order:2 },
+      { label:'风险预警数', value:'236', bg:'bg-red-50', ic:'text-red-500', change:'↑ 较上月 +12', cc:'text-red-500', icon:'Warning', order:3 },
+      { label:'待处理工单', value:'48', bg:'bg-orange-50', ic:'text-orange-500', change:'↓ 较上月 -5', cc:'text-green-500', icon:'DataAnalysis', order:4 },
+    ]
+    for (const s of stats) {
+      await pool.query(
+        `INSERT INTO dashboard_stats (label, value, bg_class, icon_class, change_text, change_class, icon_name, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [s.label, s.value, s.bg, s.ic, s.change, s.cc, s.icon, s.order]
+      )
+    }
+    console.log(`✓ 已插入 ${stats.length} 条仪表盘统计`)
 
-  console.log('--- 数据库初始化完成 ---')
-  await pool.end()
+    console.log('--- 数据库初始化完成 ---')
+  } finally {
+    await pool.end()
+  }
 }
 
 main().catch(err => {
