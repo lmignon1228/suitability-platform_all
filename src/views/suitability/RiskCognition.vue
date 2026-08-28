@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import CustomerSearchBar from '../../components/CustomerSearchBar.vue'
@@ -183,6 +183,13 @@ function onCustomerChange({ id }) {
   customerId.value = id
   fetchAndApply(id)
 }
+
+watch(() => route.query.id, (val) => {
+  if (val && val !== customerId.value) {
+    customerId.value = val
+    fetchAndApply(val)
+  }
+})
 
 function handleResize() { trendChart?.resize(); dualAxisChart?.resize() }
 

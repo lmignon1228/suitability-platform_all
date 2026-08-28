@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import CustomerSearchBar from '../../components/CustomerSearchBar.vue'
@@ -177,6 +177,13 @@ function onCustomerChange({ id }) {
   currentCustomerId.value = id
   fetchAndApply(id)
 }
+
+watch(() => route.query.id, (val) => {
+  if (val && val !== currentCustomerId.value) {
+    currentCustomerId.value = val
+    fetchAndApply(val)
+  }
+})
 
 function handleResize() { trendChart?.resize(); correlationChart?.resize() }
 

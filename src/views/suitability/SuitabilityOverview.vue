@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { WarningFilled, InfoFilled } from '@element-plus/icons-vue'
@@ -176,6 +176,13 @@ function onCustomerChange({ id }) {
   currentCustomerId.value = id
   fetchAndApply(id)
 }
+
+watch(() => route.query.id, (val) => {
+  if (val && val !== currentCustomerId.value) {
+    currentCustomerId.value = val
+    fetchAndApply(val)
+  }
+})
 
 function buildTrendOption(t) {
   return {

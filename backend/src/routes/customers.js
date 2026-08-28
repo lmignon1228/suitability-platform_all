@@ -2,6 +2,25 @@ const express = require('express')
 const pool = require('../db')
 const router = express.Router()
 
+router.get('/', async (req, res) => {
+  try {
+    const { keyword } = req.query
+    let sql = 'SELECT id, name FROM customers'
+    const params = []
+    if (keyword && keyword.trim()) {
+      sql += ' WHERE name LIKE ? OR id LIKE ?'
+      const kw = `%${keyword.trim()}%`
+      params.push(kw, kw)
+    }
+    sql += ' ORDER BY id'
+    const [rows] = await pool.query(sql, params)
+    res.json(rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 router.get('/:id/risk-data', async (req, res) => {
   try {
     const { id } = req.params
