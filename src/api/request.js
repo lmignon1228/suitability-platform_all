@@ -2,9 +2,11 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 const request = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: '/api',
   timeout: 15000,
 })
+
+request.defaults.headers.common['cpolar-skip-browser-warning'] = 'true'
 
 request.interceptors.response.use(
   (res) => res.data,

@@ -85,7 +85,7 @@
       <!-- Main Content -->
       <main class="flex-1 overflow-y-auto bg-gray-50">
         <div class="p-3">
-          <router-view />
+          <router-view :key="$route.fullPath" />
         </div>
       </main>
     </div>
