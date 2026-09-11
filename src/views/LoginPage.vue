@@ -21,9 +21,9 @@
         <div class="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-8">
           <el-icon :size="40" color="#fff"><Promotion /></el-icon>
         </div>
-        <h1 class="text-4xl font-extrabold text-white tracking-wide mb-4 leading-tight">用户适当性管理平台</h1>
+        <h1 class="text-4xl font-extrabold text-white tracking-wide mb-4 leading-tight">{{ t('common.appName') }}</h1>
         <p class="text-lg text-white/70 mb-10 leading-relaxed">
-          基于多维度数据模型，为每位客户提供精准的适当性评估与风险管理服务
+          {{ t('login.subtitle') }}
         </p>
         <div class="grid grid-cols-1 gap-4 w-full max-w-sm">
           <div v-for="(feature, idx) in features" :key="idx"
@@ -36,7 +36,7 @@
         </div>
       </div>
 
-      <div class="absolute bottom-6 text-white/30 text-xs">© 2024 用户适当性管理平台 v3.0</div>
+      <div class="absolute bottom-6 text-white/30 text-xs">{{ t('login.copyright') }}</div>
     </div>
 
     <!-- Right: Login Card -->
@@ -47,22 +47,22 @@
           <div class="w-10 h-10 bg-[#0052D9] rounded-xl flex items-center justify-center">
             <el-icon :size="22" color="#fff"><Promotion /></el-icon>
           </div>
-          <span class="text-xl font-bold text-[#0052D9]">适当性管理平台</span>
+          <span class="text-xl font-bold text-[#0052D9]">{{ t('login.shortName') }}</span>
         </div>
 
-        <h2 class="text-xl font-bold text-gray-800 mb-1.5">欢迎登录</h2>
-        <p class="text-sm text-gray-400 mb-8">请输入您的账号信息以访问系统</p>
+        <h2 class="text-xl font-bold text-gray-800 mb-1.5">{{ t('login.welcome') }}</h2>
+        <p class="text-sm text-gray-400 mb-8">{{ t('login.welcomeDesc') }}</p>
 
         <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-width="0" size="large">
           <el-form-item prop="username">
-            <el-input v-model="loginForm.username" placeholder="请输入用户名" :prefix-icon="User" />
+            <el-input v-model="loginForm.username" :placeholder="t('login.username')" :prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
-            <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" :prefix-icon="Lock" show-password />
+            <el-input v-model="loginForm.password" type="password" :placeholder="t('login.password')" :prefix-icon="Lock" show-password />
           </el-form-item>
           <el-form-item prop="captcha">
             <div class="flex gap-3 w-full">
-              <el-input v-model="loginForm.captcha" placeholder="请输入验证码" :prefix-icon="Key" class="flex-1" />
+              <el-input v-model="loginForm.captcha" :placeholder="t('login.captcha')" :prefix-icon="Key" class="flex-1" />
               <div class="h-[42px] w-[130px] flex-shrink-0 cursor-pointer rounded overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center hover:border-[#0052D9]/40 transition-colors"
                 @click="refreshCaptcha">
                 <canvas ref="captchaCanvas" width="130" height="42" />
@@ -71,13 +71,13 @@
           </el-form-item>
           <el-form-item>
             <div class="flex justify-between items-center w-full">
-              <el-checkbox v-model="rememberUsername">记住用户名</el-checkbox>
-              <a href="javascript:;" class="text-sm text-[#0052D9] hover:text-[#003EB3]">忘记密码？</a>
+              <el-checkbox v-model="rememberUsername">{{ t('login.rememberUsername') }}</el-checkbox>
+              <a href="javascript:;" class="text-sm text-[#0052D9] hover:text-[#003EB3]">{{ t('login.forgotPassword') }}</a>
             </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" class="w-full !h-11 !text-base !font-semibold !rounded-lg" @click="handleLogin">
-              登 录
+              {{ t('login.loginBtn') }}
             </el-button>
           </el-form-item>
         </el-form>
@@ -86,7 +86,7 @@
         <div class="relative my-7">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200" /></div>
           <div class="relative flex justify-center text-xs">
-            <span class="px-3 bg-white text-gray-400">其他登录方式</span>
+            <span class="px-3 bg-white text-gray-400">{{ t('login.otherLogin') }}</span>
           </div>
         </div>
 
@@ -96,13 +96,13 @@
             <div class="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-[#0052D9]/50 group-hover:bg-[#0052D9]/5 transition-all">
               <el-icon :size="20" class="text-gray-400 group-hover:text-[#0052D9] transition-colors"><Connection /></el-icon>
             </div>
-            <span class="text-xs text-gray-400">SSO单点登录</span>
+            <span class="text-xs text-gray-400">{{ t('login.ssoLogin') }}</span>
           </button>
           <button class="flex flex-col items-center gap-1.5 group">
             <div class="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center group-hover:border-[#0052D9]/50 group-hover:bg-[#0052D9]/5 transition-all">
               <el-icon :size="20" class="text-gray-400 group-hover:text-[#0052D9] transition-colors"><OfficeBuilding /></el-icon>
             </div>
-            <span class="text-xs text-gray-400">企业登录</span>
+            <span class="text-xs text-gray-400">{{ t('login.enterpriseLogin') }}</span>
           </button>
         </div>
       </div>
@@ -115,7 +115,9 @@ import { ref, reactive, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Key, Connection, OfficeBuilding, Promotion, DataAnalysis, Monitor, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const loginFormRef = ref(null)
 const captchaCanvas = ref(null)
@@ -128,15 +130,15 @@ const loginForm = reactive({
 })
 
 const loginRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  username: [{ required: true, message: t('login.username'), trigger: 'blur' }],
+  password: [{ required: true, message: t('login.password'), trigger: 'blur' }],
   captcha: []
 }
 
 const features = [
-  { icon: markRaw(DataAnalysis), text: '多维度风险评估模型，实时跟踪客户风险变化' },
-  { icon: markRaw(Monitor), text: '智能异常行为监测，提前预警潜在风险' },
-  { icon: markRaw(CircleCheck), text: '合规管理全流程覆盖，满足监管要求' },
+  { icon: markRaw(DataAnalysis), text: t('login.feature1') },
+  { icon: markRaw(Monitor), text: t('login.feature2') },
+  { icon: markRaw(CircleCheck), text: t('login.feature3') },
 ]
 
 function drawCaptcha() {
@@ -175,7 +177,7 @@ function handleLogin() {
   loginFormRef.value?.validate((valid) => {
     if (valid) {
       sessionStorage.setItem('token', 'mock-token')
-      ElMessage.success('登录成功')
+      ElMessage.success(t('login.successMsg'))
       router.push('/dashboard')
     }
   })

@@ -11,6 +11,7 @@
 CREATE TABLE IF NOT EXISTS customers (
     id              VARCHAR(20)  PRIMARY KEY,
     name            VARCHAR(50)  NOT NULL,
+    name_en         VARCHAR(80)  DEFAULT '',
     questionnaire_level SMALLINT NOT NULL,
     predict_level        SMALLINT NOT NULL,
     assess_time          DATE         NOT NULL,
@@ -29,33 +30,43 @@ CREATE TABLE IF NOT EXISTS customer_risk_data (
     overview_radar        JSON NOT NULL,
     overview_modules      JSON NOT NULL,
     overview_reasons      JSON NOT NULL,
+    overview_reasons_en    JSON NOT NULL DEFAULT (JSON_OBJECT()),
     overview_suggestions  JSON NOT NULL,
+    overview_suggestions_en JSON NOT NULL DEFAULT (JSON_OBJECT()),
     overview_trend_interp VARCHAR(1000)    DEFAULT '',
     overview_radar_interp VARCHAR(1000)    DEFAULT '',
+    overview_trend_interp_en VARCHAR(1000) DEFAULT '',
+    overview_radar_interp_en VARCHAR(1000) DEFAULT '',
 
     -- 客观风险承受力数据
     objective_kpi          JSON NOT NULL,
     objective_trend        JSON NOT NULL,
     objective_months       JSON NOT NULL,
     objective_interp       JSON NOT NULL,
+    objective_interp_en    JSON NOT NULL DEFAULT (JSON_OBJECT()),
     objective_corr         JSON NOT NULL,
     objective_market_interp VARCHAR(1000)    DEFAULT '',
+    objective_market_interp_en VARCHAR(1000) DEFAULT '',
     objective_metric       JSON NOT NULL,
 
     -- 风险偏好数据
     preference_kpi            JSON NOT NULL,
     preference_trend          JSON NOT NULL,
     preference_interp         JSON NOT NULL,
+    preference_interp_en      JSON NOT NULL DEFAULT (JSON_OBJECT()),
     preference_scatter        JSON NOT NULL,
     preference_scatter_interp VARCHAR(1000)    DEFAULT '',
+    preference_scatter_interp_en VARCHAR(1000) DEFAULT '',
     preference_metric         JSON NOT NULL,
 
     -- 风险认知数据
     cognition_kpi              JSON NOT NULL,
     cognition_trend            JSON NOT NULL,
-    cognition_interp           JSON NOT NULL,
-    cognition_dual_axis        JSON NOT NULL,
+cognition_interp              JSON NOT NULL,
+    cognition_interp_en           JSON NOT NULL DEFAULT (JSON_OBJECT()),
+    cognition_dual_axis           JSON NOT NULL,
     cognition_dual_axis_interp VARCHAR(1000)    DEFAULT '',
+    cognition_dual_axis_interp_en VARCHAR(1000) DEFAULT '',
     cognition_metric           JSON NOT NULL,
 
     FOREIGN KEY (customer_id) REFERENCES customers(id)

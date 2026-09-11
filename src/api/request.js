@@ -8,6 +8,12 @@ const request = axios.create({
 
 request.defaults.headers.common['cpolar-skip-browser-warning'] = 'true'
 
+request.interceptors.request.use((config) => {
+  const lang = localStorage.getItem('suitability-locale') || localStorage.getItem('lang') || 'zh'
+  config.headers['Accept-Language'] = lang
+  return config
+})
+
 request.interceptors.response.use(
   (res) => res.data,
   (err) => {

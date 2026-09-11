@@ -7,10 +7,23 @@
           <div class="w-8 h-8 bg-white/15 backdrop-blur rounded-lg flex items-center justify-center">
             <el-icon :size="18" color="#fff"><Promotion /></el-icon>
           </div>
-          <span class="text-white font-semibold text-base tracking-wide">用户适当性管理平台</span>
+          <span class="text-white font-semibold text-base tracking-wide">{{ t('common.appName') }}</span>
         </div>
       </div>
       <div class="flex items-center gap-4">
+        <el-dropdown trigger="click" @command="handleLangChange">
+          <div class="flex items-center gap-1.5 cursor-pointer group">
+            <el-icon class="text-white/90" :size="16"><Switch /></el-icon>
+            <span class="text-white/90 text-sm group-hover:text-white">{{ t('header.language') }}</span>
+            <el-icon class="text-white/60" :size="12"><ArrowDown /></el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item :command="'zh'" :class="{ 'is-active': currentLocale === 'zh' }">中文</el-dropdown-item>
+              <el-dropdown-item :command="'en'" :class="{ 'is-active': currentLocale === 'en' }">English</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-badge :value="3" :max="9" class="notification-badge">
           <el-button circle size="small" class="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20">
             <el-icon><Bell /></el-icon>
@@ -21,14 +34,14 @@
             <el-avatar :size="32" class="!bg-primary-400">
               <el-icon><User /></el-icon>
             </el-avatar>
-            <span class="text-white/90 text-sm group-hover:text-white">管理员</span>
+            <span class="text-white/90 text-sm group-hover:text-white">{{ t('header.admin') }}</span>
             <el-icon class="text-white/60" :size="12"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item :icon="User">个人中心</el-dropdown-item>
-              <el-dropdown-item :icon="Setting">系统设置</el-dropdown-item>
-              <el-dropdown-item divided :icon="SwitchButton" @click="handleLogout">退出登录</el-dropdown-item>
+              <el-dropdown-item :icon="User">{{ t('header.profile') }}</el-dropdown-item>
+              <el-dropdown-item :icon="Setting">{{ t('header.settings') }}</el-dropdown-item>
+              <el-dropdown-item divided :icon="SwitchButton" @click="handleLogout">{{ t('header.logout') }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -47,37 +60,37 @@
           >
             <el-menu-item index="/dashboard">
               <el-icon><Odometer /></el-icon>
-              <span>首页总览</span>
+              <span>{{ t('sidebar.dashboard') }}</span>
             </el-menu-item>
 
             <el-sub-menu index="suitability">
               <template #title>
                 <el-icon><DataAnalysis /></el-icon>
-                <span>适当性管理</span>
+                <span>{{ t('sidebar.suitabilityManager') }}</span>
               </template>
               <el-menu-item index="/suitability/overview">
                 <el-icon><PieChart /></el-icon>
-                <span>适当性总览</span>
+                <span>{{ t('sidebar.overview') }}</span>
               </el-menu-item>
               <el-menu-item index="/suitability/objective">
                 <el-icon><TrendCharts /></el-icon>
-                <span>客观风险承受力</span>
+                <span>{{ t('sidebar.objective') }}</span>
               </el-menu-item>
               <el-menu-item index="/suitability/preference">
                 <el-icon><Operation /></el-icon>
-                <span>风险偏好</span>
+                <span>{{ t('sidebar.preference') }}</span>
               </el-menu-item>
               <el-menu-item index="/suitability/cognition">
                 <el-icon><Reading /></el-icon>
-                <span>风险认知</span>
+                <span>{{ t('sidebar.cognition') }}</span>
               </el-menu-item>
             </el-sub-menu>
           </el-menu>
         </div>
         <div class="p-3 border-t border-gray-100">
           <div class="bg-primary-50 rounded-lg p-3">
-            <div class="text-xs text-primary-700 font-medium mb-1">系统版本</div>
-            <div class="text-xs text-primary-500">v3.2.1 · 2024.06</div>
+            <div class="text-xs text-primary-700 font-medium mb-1">{{ t('version.label') }}</div>
+            <div class="text-xs text-primary-500">{{ t('version.value') }}</div>
           </div>
         </div>
       </aside>
@@ -85,7 +98,7 @@
       <!-- Main Content -->
       <main class="flex-1 overflow-y-auto bg-gray-50">
         <div class="p-3">
-          <router-view :key="$route.fullPath" />
+          <router-view :key="routerViewKey" />
         </div>
       </main>
     </div>
@@ -95,18 +108,29 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Promotion, Bell, User, ArrowDown, Setting, SwitchButton, Odometer, DataAnalysis, PieChart, TrendCharts, Operation, Reading } from '@element-plus/icons-vue'
+import { Promotion, Bell, User, ArrowDown, Setting, SwitchButton, Switch, Odometer, DataAnalysis, PieChart, TrendCharts, Operation, Reading } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
+import { setLocale } from '../i18n'
+
+const { t, locale } = useI18n()
+const currentLocale = computed(() => locale.value)
 
 const route = useRoute()
 const router = useRouter()
 
 const activeMenu = computed(() => route.path)
 
+const routerViewKey = computed(() => `${route.fullPath}|${locale.value}`)
+
+function handleLangChange(lang) {
+  setLocale(lang)
+}
+
 function handleLogout() {
-  ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
+  ElMessageBox.confirm(t('logout.confirmMsg'), t('logout.title'), {
+    confirmButtonText: t('common.confirm'),
+    cancelButtonText: t('common.cancel'),
     type: 'warning'
   }).then(() => {
     sessionStorage.removeItem('token')
@@ -154,5 +178,10 @@ function handleLogout() {
 
 .notification-badge :deep(.el-badge__content) {
   background-color: #f56c6c;
+}
+
+.is-active {
+  color: #165DFF;
+  font-weight: 600;
 }
 </style>

@@ -1,5 +1,6 @@
 const express = require('express')
 const pool = require('../db')
+const { localizeRow } = require('../lang')
 const router = express.Router()
 
 router.get('/stats', async (_req, res) => {
@@ -14,10 +15,10 @@ router.get('/stats', async (_req, res) => {
   }
 })
 
-router.get('/abnormal-users', async (_req, res) => {
+router.get('/abnormal-users', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, name, questionnaire_level AS questionnaireLevel,
+      `SELECT id, name, name_en AS nameEn, questionnaire_level AS questionnaireLevel,
               predict_level AS predictLevel,
               assess_time AS assessTime,
               level_diff AS diff
@@ -25,7 +26,7 @@ router.get('/abnormal-users', async (_req, res) => {
        WHERE ABS(level_diff) >= 1
        ORDER BY level_diff`
     )
-    res.json(rows)
+    res.json(rows.map(r => localizeRow(req.lang, r, [['name', 'nameEn']])))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })

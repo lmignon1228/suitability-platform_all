@@ -1,22 +1,22 @@
 <template>
   <div class="bg-white rounded-xl p-3 border border-gray-100 mb-3 flex flex-wrap items-center gap-3">
-    <el-select v-model="selectedCustomer" placeholder="选择客户" style="width: 200px" size="default"
+    <el-select v-model="selectedCustomer" :placeholder="t('searchBar.selectCustomer')" style="width: 200px" size="default"
       filterable :filter-method="filterCustomers" @change="handleCustomerChange">
       <el-option v-for="c in customerList" :key="c.id" :label="c.name + ' (' + c.id + ')'" :value="c.id" />
     </el-select>
     <el-input
       v-model="searchText"
-      placeholder="搜索姓名/ID"
+      :placeholder="t('searchBar.placeholder')"
       :prefix-icon="Search"
       style="width: 260px"
       clearable
       @keyup.enter="handleEnter"
       @clear="handleClear"
     />
-    <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+    <el-button type="primary" :icon="Search" @click="handleSearch">{{ t('common.search') }}</el-button>
     <div class="ml-auto text-xs text-gray-400 flex items-center gap-1.5">
       <el-icon><InfoFilled /></el-icon>
-      本页按当前客户展示
+      {{ t('searchBar.currentTip') }}
     </div>
   </div>
 </template>
@@ -25,8 +25,10 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, InfoFilled } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import { getCustomerList } from '../api'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
