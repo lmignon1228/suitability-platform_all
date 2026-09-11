@@ -64,11 +64,13 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import i18n from '../i18n'
+import { useCustomerStore } from '../stores/customer'
 import { resolveIcons } from '../utils/iconMap'
 import { getDashboardStats, getAbnormalUsers } from '../api'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const customerStore = useCustomerStore()
 const loading = ref(false)
 const stats = ref([])
 const abnormalUsers = ref([])
@@ -129,6 +131,7 @@ watch(() => i18n.global.locale.value, () => {
 onMounted(fetchData)
 
 function goOverview(id, name) {
+  customerStore.setCustomer(id)
   router.push({ path: '/suitability/overview', query: { id, name } })
 }
 </script>

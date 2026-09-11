@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-xl p-3 border border-gray-100 mb-3 flex flex-wrap items-center gap-3">
-    <el-select v-model="selectedCustomer" :placeholder="t('searchBar.selectCustomer')" style="width: 200px" size="default"
+    <el-select v-model="customerStore.currentCustomerId" :placeholder="t('searchBar.selectCustomer')" style="width: 200px" size="default"
       filterable :filter-method="filterCustomers" @change="handleCustomerChange">
       <el-option v-for="c in customerList" :key="c.id" :label="c.name + ' (' + c.id + ')'" :value="c.id" />
     </el-select>
@@ -26,14 +26,15 @@ import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, InfoFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
+import { useCustomerStore } from '../stores/customer'
 import { getCustomerList } from '../api'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const customerStore = useCustomerStore()
 
 const customerList = ref([])
-const selectedCustomer = ref('')
 const searchText = ref('')
 
 async function fetchList(keyword) {
@@ -47,6 +48,7 @@ function filterCustomers(val) {
 
 function navigateTo(id, name) {
   if (!id) return
+  customerStore.setCustomer(id)
   router.push({ query: { id, name: name || '' } })
 }
 
@@ -59,7 +61,7 @@ function handleSearch() {
   fetchList(searchText.value || undefined).then(() => {
     if (customerList.value.length) {
       const first = customerList.value[0]
-      selectedCustomer.value = first.id
+      customerStore.currentCustomerId = first.id
       navigateTo(first.id, first.name)
     }
   })
@@ -69,7 +71,7 @@ function handleEnter() {
   fetchList(searchText.value || undefined).then(() => {
     if (customerList.value.length) {
       const first = customerList.value[0]
-      selectedCustomer.value = first.id
+      customerStore.currentCustomerId = first.id
       navigateTo(first.id, first.name)
     }
   })
@@ -80,15 +82,15 @@ function handleClear() {
   fetchList().then(() => {
     if (customerList.value.length) {
       const first = customerList.value[0]
-      selectedCustomer.value = first.id
+      customerStore.currentCustomerId = first.id
       navigateTo(first.id, first.name)
     }
   })
 }
 
 watch(() => route.query.id, (val) => {
-  if (val && val !== selectedCustomer.value) {
-    selectedCustomer.value = val
+  if (val && val !== customerStore.currentCustomerId) {
+    customerStore.currentCustomerId = val
   }
 }, { immediate: true })
 
@@ -96,11 +98,14 @@ onMounted(async () => {
   await fetchList()
   const qId = route.query.id
   if (qId) {
-    selectedCustomer.value = qId
-  } else if (customerList.value.length) {
+    customerStore.currentCustomerId = qId
+  } else if (!customerStore.currentCustomerId && customerList.value.length) {
     const first = customerList.value[0]
-    selectedCustomer.value = first.id
+    customerStore.currentCustomerId = first.id
     navigateTo(first.id, first.name)
+  } else if (customerStore.currentCustomerId) {
+    const match = customerList.value.find(c => c.id === customerStore.currentCustomerId)
+    if (match) navigateTo(match.id, match.name)
   }
 })
 </script>

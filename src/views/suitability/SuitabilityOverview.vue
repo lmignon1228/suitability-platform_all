@@ -128,6 +128,7 @@ import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { translateBackendText as trText, translateBackendUnit as trUnit } from '../../utils/translateText'
+import { useCustomerStore } from '../../stores/customer'
 import * as echarts from 'echarts'
 import { WarningFilled, InfoFilled } from '@element-plus/icons-vue'
 import CustomerSearchBar from '../../components/CustomerSearchBar.vue'
@@ -136,6 +137,7 @@ import { resolveIcons } from '../../utils/iconMap'
 
 const { t, tm, locale } = useI18n()
 const route = useRoute()
+const customerStore = useCustomerStore()
 const trendChartRef = ref(null)
 const radarChartRef = ref(null)
 let trendChart = null
@@ -143,7 +145,10 @@ let radarChart = null
 
 const routeCustomerId = computed(() => route.query.id || '')
 const routeCustomerName = computed(() => route.query.name || '')
-const currentCustomerId = ref(routeCustomerId.value || 'C00008231')
+const currentCustomerId = computed({
+  get: () => customerStore.currentCustomerId || routeCustomerId.value || 'C00008231',
+  set: (val) => customerStore.setCustomer(val)
+})
 const loading = ref(false)
 
 const currentKpiCards = ref([])
@@ -186,15 +191,11 @@ async function fetchAndApply(id) {
 
 function onCustomerChange({ id }) {
   currentCustomerId.value = id
-  fetchAndApply(id)
 }
 
-watch(() => route.query.id, (val) => {
-  if (val && val !== currentCustomerId.value) {
-    currentCustomerId.value = val
-    fetchAndApply(val)
-  }
-})
+watch(currentCustomerId, (val) => {
+  if (val) fetchAndApply(val)
+}, { immediate: true })
 
 watch(locale, () => {
   if (!lastTrend.value && !lastRadar.value) return
@@ -313,7 +314,6 @@ onMounted(() => {
     console.error('echarts init failed', e)
   }
   window.addEventListener('resize', handleResize)
-  fetchAndApply(currentCustomerId.value)
   nextTick(() => {
     trendChart?.resize()
     radarChart?.resize()

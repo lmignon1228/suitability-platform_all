@@ -95,6 +95,7 @@ import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { translateBackendText as trText, translateBackendUnit as trUnit, formatBackendMetric as fmtMetric } from '../../utils/translateText'
+import { useCustomerStore } from '../../stores/customer'
 import * as echarts from 'echarts'
 import CustomerSearchBar from '../../components/CustomerSearchBar.vue'
 import { getCustomerRiskData } from '../../api'
@@ -102,6 +103,7 @@ import { resolveIcons } from '../../utils/iconMap'
 
 const { t, locale } = useI18n()
 const route = useRoute()
+const customerStore = useCustomerStore()
 const trendChartRef = ref(null)
 const scatterChartRef = ref(null)
 let trendChart = null
@@ -109,7 +111,10 @@ let scatterChart = null
 
 const routeCustomerId = computed(() => route.query.id || '')
 const routeCustomerName = computed(() => route.query.name || '')
-const customerId = ref(routeCustomerId.value || 'C00008231')
+const customerId = computed({
+  get: () => customerStore.currentCustomerId || routeCustomerId.value || 'C00008231',
+  set: (val) => customerStore.setCustomer(val)
+})
 const loading = ref(false)
 
 const months = ['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07']
@@ -206,15 +211,11 @@ function refreshScatter(sd) { if (scatterChart) { try { scatterChart.setOption(b
 
 function onCustomerChange({ id }) {
   customerId.value = id
-  fetchAndApply(id)
 }
 
-watch(() => route.query.id, (val) => {
-  if (val && val !== customerId.value) {
-    customerId.value = val
-    fetchAndApply(val)
-  }
-})
+watch(customerId, (val) => {
+  if (val) fetchAndApply(val)
+}, { immediate: true })
 
 watch(locale, () => {
   if (trendChart && lastTrend.value) {
@@ -241,7 +242,6 @@ onMounted(() => {
     console.error('echarts init failed', e)
   }
   window.addEventListener('resize', handleResize)
-  fetchAndApply(customerId.value)
   nextTick(() => { trendChart?.resize(); scatterChart?.resize() })
 })
 
